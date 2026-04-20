@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
-import { artists, styleBriefs } from "@/lib/db/schema";
+import { artists, generationJobs, styleBriefs } from "@/lib/db/schema";
 import { styleBriefSchema } from "@/lib/validations";
 
 async function getArtistForSession(userId: string) {
@@ -24,7 +24,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 	});
 	if (!brief) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-	return NextResponse.json({ styleBrief: brief });
+	const latestJob = await db.query.generationJobs.findFirst({
+		where: eq(generationJobs.styleBriefId, id),
+		orderBy: [desc(generationJobs.createdAt)],
+	});
+
+	return NextResponse.json({ styleBrief: brief, latestJob: latestJob ?? null });
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

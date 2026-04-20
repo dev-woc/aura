@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { PreviewPlayer } from "@/components/studio/preview-player";
 import { StyleBriefForm } from "@/components/studio/style-brief-form";
 import { Button } from "@/components/ui/button";
-import type { GeneratedFrame, Song, StyleBrief } from "@/types";
+import type { GeneratedFrame, GenerationJob, Song, StyleBrief } from "@/types";
 
 type BriefWithSong = StyleBrief & { song?: Song | null; generatedFrames?: GeneratedFrame[] };
+type BriefResponse = { styleBrief: BriefWithSong; latestJob: GenerationJob | null };
 
 export default function StyleBriefPage() {
 	const { id } = useParams<{ id: string }>();
@@ -24,11 +25,16 @@ export default function StyleBriefPage() {
 		if (!id) return;
 		fetch(`/api/style-briefs/${id}`)
 			.then((r) => r.json())
-			.then((data) => {
+			.then((data: BriefResponse) => {
 				if (data.styleBrief) {
 					setBrief(data.styleBrief);
 					if (data.styleBrief.generatedFrames?.length) {
 						setFrames(data.styleBrief.generatedFrames);
+					}
+					// Generation recovery: resume polling if brief is still generating
+					if (data.styleBrief.status === "generating" && data.latestJob?.id) {
+						setJobId(data.latestJob.id);
+						setJobStatus(data.latestJob.status);
 					}
 				} else {
 					setError("Style brief not found");

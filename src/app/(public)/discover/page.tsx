@@ -44,7 +44,13 @@ export default function DiscoverPage() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-1">
-								<p className="text-sm text-muted-foreground">{brief.artist.displayName}</p>
+								<Link
+									href={`/artist/${brief.artist.id}`}
+									className="text-sm text-muted-foreground hover:underline"
+									onClick={(e) => e.stopPropagation()}
+								>
+									{brief.artist.displayName}
+								</Link>
 								{brief.song && (
 									<p className="text-xs text-muted-foreground">
 										{brief.song.title} — {brief.song.artistName}

@@ -34,6 +34,8 @@ export const artists = pgTable(
 		userId: text("user_id").notNull().unique(),
 		spotifyArtistId: text("spotify_artist_id"),
 		displayName: text("display_name").notNull().default(""),
+		bio: text("bio"),
+		avatarUrl: text("avatar_url"),
 		verified: boolean("verified").notNull().default(false),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

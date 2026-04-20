@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuraPlayer } from "@/components/player/aura-player";
@@ -53,7 +54,12 @@ export default function PlayPage() {
 		<div className="mx-auto max-w-3xl space-y-6">
 			<div>
 				<h1 className="text-2xl font-bold">{brief.title || "Untitled"}</h1>
-				<p className="text-muted-foreground">{brief.artist.displayName}</p>
+				<Link
+					href={`/artist/${brief.artist.id}`}
+					className="text-muted-foreground hover:underline"
+				>
+					{brief.artist.displayName}
+				</Link>
 				{brief.song && (
 					<p className="mt-1 text-sm text-muted-foreground">
 						{brief.song.title} — {brief.song.artistName}

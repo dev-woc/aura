@@ -34,6 +34,12 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
 						Aura Studio
 					</Link>
 					<div className="flex items-center gap-4">
+						<Link
+							href="/studio/settings"
+							className="text-sm text-muted-foreground hover:text-foreground"
+						>
+							Settings
+						</Link>
 						{session?.user && (
 							<span className="text-sm text-muted-foreground">{session.user.name}</span>
 						)}

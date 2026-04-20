@@ -45,3 +45,9 @@ export const generateFramesSchema = z.object({
 	styleBriefId: z.string().uuid(),
 	frameCount: z.number().int().min(5).max(15).default(10),
 });
+
+export const artistProfileSchema = z.object({
+	displayName: z.string().min(1).max(100),
+	bio: z.string().max(500).optional(),
+	avatarUrl: z.string().url().optional().or(z.literal("")),
+});
