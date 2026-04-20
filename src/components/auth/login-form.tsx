@@ -31,7 +31,17 @@ export function LoginForm() {
 				return;
 			}
 
-			router.push("/editor");
+			const res = await fetch("/api/users/me");
+			const data = await res.json();
+			const role = data?.user?.role;
+
+			if (role === "artist") {
+				router.push("/studio");
+			} else if (role === "listener") {
+				router.push("/dashboard");
+			} else {
+				router.push("/onboarding");
+			}
 		} catch {
 			setError("Something went wrong. Please try again.");
 			setLoading(false);

@@ -1,5 +1,5 @@
 {
-	"name": "link-in-bio-page-builder",
+	"name": "aura",
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
@@ -19,16 +19,14 @@
 		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
-		"@dnd-kit/core": "^6.3.1",
-		"@dnd-kit/sortable": "^10.0.0",
-		"@dnd-kit/utilities": "^3.2.2",
+		"@anthropic-ai/sdk": "^0.39.0",
 		"@neondatabase/auth": "^0.1.0-beta.21",
 		"@neondatabase/serverless": "^1.0.2",
-		"@rollup/rollup-linux-x64-gnu": "^4.58.0",
-		"@tailwindcss/oxide-linux-x64-gnu": "^4.2.0",
+		"@vercel/blob": "^0.27.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"drizzle-orm": "^0.45.1",
+		"genius-lyrics": "^4.4.7",
 		"lucide-react": "^0.575.0",
 		"next": "15.5.12",
 		"next-themes": "^0.4.6",
@@ -36,6 +34,7 @@
 		"react": "19.1.0",
 		"react-dom": "19.1.0",
 		"recharts": "^3.7.0",
+		"replicate": "^1.0.1",
 		"sonner": "^2.0.7",
 		"tailwind-merge": "^3.5.0",
 		"zod": "^4.3.6"

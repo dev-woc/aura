@@ -6,81 +6,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth/client";
-import { slugSchema } from "@/lib/validations";
-import { SlugInput } from "./slug-input";
-
-interface FormErrors {
-	name?: string;
-	email?: string;
-	password?: string;
-	slug?: string;
-	general?: string;
-}
 
 export function SignupForm() {
 	const router = useRouter();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [slug, setSlug] = useState("");
-	const [errors, setErrors] = useState<FormErrors>({});
+	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
-
-	const validate = (): boolean => {
-		const newErrors: FormErrors = {};
-
-		if (!name.trim()) newErrors.name = "Name is required";
-		if (!email.trim()) newErrors.email = "Email is required";
-		if (password.length < 8) newErrors.password = "Password must be at least 8 characters";
-
-		const slugResult = slugSchema.safeParse(slug);
-		if (!slugResult.success) {
-			newErrors.slug = slugResult.error.issues[0]?.message ?? "Invalid username";
-		}
-
-		setErrors(newErrors);
-		return Object.keys(newErrors).length === 0;
-	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!validate()) return;
-
+		if (password.length < 8) {
+			setError("Password must be at least 8 characters");
+			return;
+		}
 		setLoading(true);
-		setErrors({});
+		setError("");
 
 		try {
-			// 1. Create Neon Auth user
-			const { error } = await authClient.signUp.email({
-				email,
-				password,
-				name,
-			});
-
-			if (error) {
-				setErrors({ general: error.message || "Failed to create account" });
-				setLoading(false);
+			const { error: authError } = await authClient.signUp.email({ email, password, name });
+			if (authError) {
+				setError(authError.message || "Failed to create account");
 				return;
 			}
-
-			// 2. Create profile with slug
-			const profileRes = await fetch("/api/profile", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ slug, displayName: name }),
-			});
-
-			if (!profileRes.ok) {
-				const data = await profileRes.json();
-				setErrors({ general: data.error || "Failed to create profile" });
-				setLoading(false);
-				return;
-			}
-
-			// 3. Redirect to editor
-			router.push("/editor");
+			router.push("/onboarding");
 		} catch {
-			setErrors({ general: "Something went wrong. Please try again." });
+			setError("Something went wrong. Please try again.");
+		} finally {
 			setLoading(false);
 		}
 	};
@@ -96,9 +49,7 @@ export function SignupForm() {
 					onChange={(e) => setName(e.target.value)}
 					aria-label="Name"
 				/>
-				{errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
 			</div>
-
 			<div className="space-y-2">
 				<Label htmlFor="email">Email</Label>
 				<Input
@@ -109,9 +60,7 @@ export function SignupForm() {
 					onChange={(e) => setEmail(e.target.value)}
 					aria-label="Email"
 				/>
-				{errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
 			</div>
-
 			<div className="space-y-2">
 				<Label htmlFor="password">Password</Label>
 				<Input
@@ -122,13 +71,8 @@ export function SignupForm() {
 					onChange={(e) => setPassword(e.target.value)}
 					aria-label="Password"
 				/>
-				{errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
 			</div>
-
-			<SlugInput value={slug} onChange={setSlug} error={errors.slug} />
-
-			{errors.general && <p className="text-sm text-destructive text-center">{errors.general}</p>}
-
+			{error && <p className="text-sm text-destructive text-center">{error}</p>}
 			<Button type="submit" className="w-full" disabled={loading}>
 				{loading ? "Creating Account..." : "Create Account"}
 			</Button>
