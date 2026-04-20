@@ -8,10 +8,10 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export async function POST(request: NextRequest) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-	if (!uploadRateLimiter.check(session.userId).success) {
+	if (!uploadRateLimiter.check(session!.user!.id).success) {
 		return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
 	}
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 	}
 
 	try {
-		const filename = `aura/reference-images/${session.userId}/${Date.now()}-${file.name}`;
+		const filename = `aura/reference-images/${session!.user!.id}/${Date.now()}-${file.name}`;
 		const blob = await put(filename, file, { access: "public" });
 		return NextResponse.json({ url: blob.url });
 	} catch (error) {

@@ -27,6 +27,7 @@ export async function fetchLyrics(
 ): Promise<{ geniusId: number | null; lyrics: string | null }> {
 	try {
 		const c = getClient();
+		if (!c) return { geniusId: null, lyrics: null };
 		const query = `${trackTitle} ${artistName}`;
 		const results = await c.songs.search(query);
 

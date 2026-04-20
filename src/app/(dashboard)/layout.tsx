@@ -1,39 +1,43 @@
 "use client";
 
-import { LogOut } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth/client";
+import { useEffect } from "react";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout(_: { children: React.ReactNode }) {
 	const router = useRouter();
-	const { data: session } = authClient.useSession();
 
-	const handleSignOut = async () => {
-		await authClient.signOut();
-		router.push("/login");
-	};
+	useEffect(() => {
+		fetch("/api/users/me")
+			.then((r) => {
+				if (r.status === 401) {
+					router.push("/login");
+					return null;
+				}
+				return r.json();
+			})
+			.then((data) => {
+				if (!data) return;
+				const role = data.user?.role;
+				const onboardingComplete = data.user?.onboardingComplete;
+
+				if (!onboardingComplete) {
+					router.push("/onboarding");
+				} else if (role === "artist") {
+					router.push("/studio");
+				} else if (role === "listener") {
+					router.push("/dashboard");
+				} else {
+					router.push("/onboarding");
+				}
+			})
+			.catch(() => {
+				router.push("/login");
+			});
+	}, [router]);
 
 	return (
-		<div className="min-h-screen bg-background">
-			<nav className="border-b bg-card">
-				<div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-					<Link href="/" className="text-lg font-semibold">
-						juice music art
-					</Link>
-					<div className="flex items-center gap-4">
-						{session?.user && (
-							<span className="text-sm text-muted-foreground">{session.user.name}</span>
-						)}
-						<Button variant="ghost" size="sm" onClick={handleSignOut}>
-							<LogOut className="mr-2 h-4 w-4" />
-							Sign out
-						</Button>
-					</div>
-				</div>
-			</nav>
-			<main>{children}</main>
+		<div className="flex min-h-screen items-center justify-center">
+			<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
 		</div>
 	);
 }

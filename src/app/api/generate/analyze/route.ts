@@ -11,10 +11,10 @@ import { getAudioFeatures } from "@/lib/spotify";
 import { generateAnalyzeSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-	if (!generateRateLimiter.check(session.userId).success) {
+	if (!generateRateLimiter.check(session!.user!.id).success) {
 		return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
 	}
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
 	// Verify ownership
 	const artist = await db.query.artists.findFirst({
-		where: eq(artists.userId, session.userId),
+		where: eq(artists.userId, session!.user!.id),
 	});
 	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
 

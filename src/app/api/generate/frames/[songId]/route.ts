@@ -9,8 +9,8 @@ export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ songId: string }> },
 ) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const { songId } = await params;
 	const { searchParams } = new URL(request.url);

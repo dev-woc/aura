@@ -6,16 +6,16 @@ import { db } from "@/lib/db";
 import { artists, styleBriefs } from "@/lib/db/schema";
 import { styleBriefSchema } from "@/lib/validations";
 
-async function getArtistForSession(session: { userId: string }) {
-	return db.query.artists.findFirst({ where: eq(artists.userId, session.userId) });
+async function getArtistForSession(userId: string) {
+	return db.query.artists.findFirst({ where: eq(artists.userId, userId) });
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const { id } = await params;
-	const artist = await getArtistForSession(session);
+	const artist = await getArtistForSession(session!.user!.id);
 	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
 
 	const brief = await db.query.styleBriefs.findFirst({
@@ -28,11 +28,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const { id } = await params;
-	const artist = await getArtistForSession(session);
+	const artist = await getArtistForSession(session!.user!.id);
 	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
 
 	const body = await request.json();
@@ -53,11 +53,11 @@ export async function DELETE(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const { id } = await params;
-	const artist = await getArtistForSession(session);
+	const artist = await getArtistForSession(session!.user!.id);
 	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
 
 	await db

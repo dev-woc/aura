@@ -8,11 +8,11 @@ import { apiRateLimiter } from "@/lib/rate-limit";
 import { styleBriefSchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const artist = await db.query.artists.findFirst({
-		where: eq(artists.userId, session.userId),
+		where: eq(artists.userId, session!.user!.id),
 	});
 	if (!artist) return NextResponse.json({ error: "Artist profile not found" }, { status: 404 });
 
@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const ip = request.headers.get("x-forwarded-for") ?? "unknown";
 	if (!apiRateLimiter.check(ip).success) {
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 	}
 
 	const artist = await db.query.artists.findFirst({
-		where: eq(artists.userId, session.userId),
+		where: eq(artists.userId, session!.user!.id),
 	});
 	if (!artist) return NextResponse.json({ error: "Artist profile not found" }, { status: 404 });
 

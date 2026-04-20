@@ -4,8 +4,8 @@ import { auth } from "@/lib/auth/server";
 import { fetchLyrics } from "@/lib/genius";
 
 export async function GET(request: NextRequest) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const { searchParams } = new URL(request.url);
 	const title = searchParams.get("title");

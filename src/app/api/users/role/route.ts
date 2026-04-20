@@ -6,8 +6,8 @@ import { artists, usersMeta } from "@/lib/db/schema";
 import { userRoleSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
-	const session = await auth.getSession(request);
-	if (!session?.userId) {
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
 	await db
 		.insert(usersMeta)
-		.values({ userId: session.userId, role, onboardingComplete: true })
+		.values({ userId: session!.user!.id, role, onboardingComplete: true })
 		.onConflictDoUpdate({
 			target: usersMeta.userId,
 			set: { role, onboardingComplete: true, updatedAt: new Date() },
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 	if (role === "artist") {
 		await db
 			.insert(artists)
-			.values({ userId: session.userId, displayName: session.user?.name ?? "" })
+			.values({ userId: session!.user!.id, displayName: session!.user?.name ?? "" })
 			.onConflictDoNothing();
 	}
 
