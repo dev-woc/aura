@@ -1,11 +1,19 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { artists, generatedFrames, songs, styleBriefs, usersMeta } from "@/lib/db/schema";
+import type {
+	artists,
+	generatedFrames,
+	generationJobs,
+	songs,
+	styleBriefs,
+	usersMeta,
+} from "@/lib/db/schema";
 
 export type UserMeta = InferSelectModel<typeof usersMeta>;
 export type Artist = InferSelectModel<typeof artists>;
 export type Song = InferSelectModel<typeof songs>;
 export type StyleBrief = InferSelectModel<typeof styleBriefs>;
 export type GeneratedFrame = InferSelectModel<typeof generatedFrames>;
+export type GenerationJob = InferSelectModel<typeof generationJobs>;
 
 export type UserRole = "artist" | "listener";
 

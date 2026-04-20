@@ -31,6 +31,9 @@ export default function ListenerLayout({ children }: { children: React.ReactNode
 					<Link href="/dashboard" className="text-lg font-semibold">
 						Aura
 					</Link>
+					<Link href="/discover" className="text-sm text-muted-foreground hover:text-foreground">
+						Discover
+					</Link>
 					<div className="flex items-center gap-4">
 						{session?.user && (
 							<span className="text-sm text-muted-foreground">{session.user.name}</span>

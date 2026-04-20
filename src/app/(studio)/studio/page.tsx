@@ -14,6 +14,8 @@ const statusColors: Record<string, string> = {
 	ready: "bg-green-100 text-green-700",
 };
 
+const publishedBadge = "bg-blue-100 text-blue-700";
+
 export default function StudioPage() {
 	const [briefs, setBriefs] = useState<BriefWithSong[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -73,13 +75,22 @@ export default function StudioPage() {
 											: "No song linked"}
 									</p>
 									<div className="flex items-center justify-between">
-										<span
-											className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-												statusColors[brief.status] ?? statusColors.draft
-											}`}
-										>
-											{brief.status}
-										</span>
+										<div className="flex items-center gap-1.5">
+											<span
+												className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+													statusColors[brief.status] ?? statusColors.draft
+												}`}
+											>
+												{brief.status}
+											</span>
+											{brief.published && (
+												<span
+													className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${publishedBadge}`}
+												>
+													published
+												</span>
+											)}
+										</div>
 										<span className="text-xs text-muted-foreground">
 											{new Date(brief.createdAt).toLocaleDateString()}
 										</span>

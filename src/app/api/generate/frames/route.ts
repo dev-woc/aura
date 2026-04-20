@@ -3,11 +3,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
-import { artists, generatedFrames, songs, styleBriefs } from "@/lib/db/schema";
+import { artists, generationJobs, songs, styleBriefs } from "@/lib/db/schema";
 import { generateRateLimiter } from "@/lib/rate-limit";
-import { generateFrames } from "@/lib/replicate";
 import { generateFramesSchema } from "@/lib/validations";
-import type { ArtStyle, MoodProfile, NarrativeMap, PaletteColor } from "@/types";
 
 export async function POST(request: NextRequest) {
 	const { data: session } = await auth.getSession();
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
 	const parsed = generateFramesSchema.safeParse(body);
 	if (!parsed.success) return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
 
-	const { songId, styleBriefId, frameCount } = parsed.data;
+	const { songId, styleBriefId } = parsed.data;
 
 	const artist = await db.query.artists.findFirst({
 		where: eq(artists.userId, session!.user!.id),
@@ -43,44 +41,26 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	// Mark as generating
+	const [job] = await db.insert(generationJobs).values({ styleBriefId }).returning();
+
 	await db
 		.update(styleBriefs)
 		.set({ status: "generating" })
 		.where(eq(styleBriefs.id, styleBriefId));
 
-	try {
-		const narrativeMap = song.narrativeMap as NarrativeMap;
-		const moodProfile = song.moodProfile as MoodProfile;
+	const baseUrl =
+		process.env.NEXT_PUBLIC_APP_URL ??
+		(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+	const workerUrl = `${baseUrl}/api/generate/frames/worker`;
 
-		const frames = await generateFrames({
-			segments: narrativeMap.segments,
-			mood: moodProfile,
-			artStyle: brief.artStyle as ArtStyle,
-			palette: brief.palette as PaletteColor[],
-			frameCount,
-		});
+	fetch(workerUrl, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-worker-secret": process.env.WORKER_SECRET ?? "",
+		},
+		body: JSON.stringify({ jobId: job.id }),
+	}).catch((err) => console.error("[generate/frames] worker dispatch failed:", err));
 
-		// Store frames
-		if (frames.length > 0) {
-			await db.insert(generatedFrames).values(
-				frames.map((f) => ({
-					styleBriefId,
-					songId,
-					frameUrl: f.frameUrl,
-					timestampSeconds: f.timestampSeconds,
-					sortOrder: f.sortOrder,
-					prompt: f.prompt,
-				})),
-			);
-		}
-
-		await db.update(styleBriefs).set({ status: "ready" }).where(eq(styleBriefs.id, styleBriefId));
-
-		return NextResponse.json({ frames, count: frames.length });
-	} catch (error) {
-		console.error("[generate/frames]", error);
-		await db.update(styleBriefs).set({ status: "draft" }).where(eq(styleBriefs.id, styleBriefId));
-		return NextResponse.json({ error: "Frame generation failed" }, { status: 500 });
-	}
+	return NextResponse.json({ jobId: job.id, status: "pending" });
 }

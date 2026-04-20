@@ -88,6 +88,8 @@ export const styleBriefs = pgTable(
 		layerWeights: jsonb("layer_weights").notNull().default({ mood: 33, audio: 33, lyrics: 34 }),
 		referenceImageUrls: jsonb("reference_image_urls").notNull().default([]),
 		status: text("status").notNull().default("draft"), // 'draft' | 'generating' | 'ready'
+		published: boolean("published").notNull().default(false),
+		publishedAt: timestamp("published_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -121,6 +123,23 @@ export const generatedFrames = pgTable(
 	],
 );
 
+// Generation jobs (async frame generation tracking)
+export const generationJobs = pgTable(
+	"generation_jobs",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		styleBriefId: uuid("style_brief_id")
+			.notNull()
+			.references(() => styleBriefs.id, { onDelete: "cascade" }),
+		status: text("status").notNull().default("pending"), // 'pending' | 'running' | 'done' | 'failed'
+		error: text("error"),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [index("idx_generation_jobs_brief_id").on(table.styleBriefId)],
+);
+
 // Relations
 export const usersMetaRelations = relations(usersMeta, ({ one }) => ({
 	artist: one(artists, { fields: [usersMeta.userId], references: [artists.userId] }),
@@ -139,6 +158,11 @@ export const styleBriefsRelations = relations(styleBriefs, ({ one, many }) => ({
 	artist: one(artists, { fields: [styleBriefs.artistId], references: [artists.id] }),
 	song: one(songs, { fields: [styleBriefs.songId], references: [songs.id] }),
 	generatedFrames: many(generatedFrames),
+	generationJobs: many(generationJobs),
+}));
+
+export const generationJobsRelations = relations(generationJobs, ({ one }) => ({
+	styleBrief: one(styleBriefs, { fields: [generationJobs.styleBriefId], references: [styleBriefs.id] }),
 }));
 
 export const generatedFramesRelations = relations(generatedFrames, ({ one }) => ({

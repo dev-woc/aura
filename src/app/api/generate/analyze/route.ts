@@ -7,7 +7,8 @@ import { db } from "@/lib/db";
 import { artists, songs, styleBriefs } from "@/lib/db/schema";
 import { fetchLyrics } from "@/lib/genius";
 import { generateRateLimiter } from "@/lib/rate-limit";
-import { getAudioFeatures } from "@/lib/spotify";
+import { getAudioAnalysis, getAudioFeatures } from "@/lib/spotify";
+import type { BeatGrid } from "@/types";
 import { generateAnalyzeSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
@@ -74,8 +75,23 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Could not fetch lyrics for this track" }, { status: 422 });
 		}
 
-		// 3. Spotify audio features
-		const audioFeatures = await getAudioFeatures(spotifyTrackId);
+		// 3. Spotify audio features + analysis
+		const [audioFeatures, audioAnalysis] = await Promise.all([
+			getAudioFeatures(spotifyTrackId),
+			getAudioAnalysis(spotifyTrackId),
+		]);
+		const beatGrid: BeatGrid = {
+			bpm: audioAnalysis.tempo,
+			beats: audioAnalysis.beats.map((b) => ({
+				startMs: Math.round(b.start * 1000),
+				confidence: b.confidence,
+			})),
+			sections: audioAnalysis.sections.map((s, i) => ({
+				startMs: Math.round(s.start * 1000),
+				endMs: Math.round((s.start + s.duration) * 1000),
+				label: `Section ${i + 1}`,
+			})),
+		};
 
 		// 4. Claude lyric analysis
 		const narrativeMap = await analyzeLyrics({
@@ -99,6 +115,7 @@ export async function POST(request: NextRequest) {
 				lyricsCache: lyrics,
 				narrativeMap,
 				moodProfile,
+				beatGrid,
 				analyzedAt: new Date(),
 				updatedAt: new Date(),
 			})

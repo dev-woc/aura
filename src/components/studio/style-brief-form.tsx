@@ -10,22 +10,14 @@ import { SpotifyTrackSearch } from "@/components/studio/spotify-track-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type {
-	ArtStyle,
-	GeneratedFrame,
-	LayerWeights,
-	PaletteColor,
-	Song,
-	SpotifyTrack,
-	StyleBrief,
-} from "@/types";
+import type { ArtStyle, LayerWeights, PaletteColor, Song, SpotifyTrack, StyleBrief } from "@/types";
 
 type StepStatus = "idle" | "loading" | "done" | "error";
 
 interface StyleBriefFormProps {
 	initialBrief?: StyleBrief & { song?: Song | null };
 	onSave?: (brief: StyleBrief) => void;
-	onFramesGenerated?: (frames: GeneratedFrame[]) => void;
+	onFramesGenerated?: (jobId: string) => void;
 }
 
 export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: StyleBriefFormProps) {
@@ -127,16 +119,10 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 				throw new Error(err.error ?? "Frame generation failed");
 			}
 
+			const data = await res.json();
 			setGenerateStatus("done");
-			toast.success("Frames generated!");
-
-			const framesRes = await fetch(
-				`/api/generate/frames/${analyzedSongId}?styleBriefId=${savedBriefId}`,
-			);
-			if (framesRes.ok) {
-				const framesData = await framesRes.json();
-				onFramesGenerated?.(framesData.frames);
-			}
+			toast.success("Frame generation started!");
+			onFramesGenerated?.(data.jobId);
 		} catch (error) {
 			setGenerateStatus("error");
 			toast.error(error instanceof Error ? error.message : "Failed to generate frames");
@@ -233,9 +219,9 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 					className="flex-1"
 				>
 					{generateStatus === "loading"
-						? "Generating... (2-5min)"
+						? "Starting..."
 						: generateStatus === "done"
-							? "Frames Generated ✓"
+							? "Generation Queued ✓"
 							: generateStatus === "error"
 								? "Retry Generate"
 								: "Generate Frames"}
