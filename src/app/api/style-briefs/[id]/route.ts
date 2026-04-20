@@ -1,0 +1,68 @@
+import { and, eq } from "drizzle-orm";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/server";
+import { db } from "@/lib/db";
+import { artists, styleBriefs } from "@/lib/db/schema";
+import { styleBriefSchema } from "@/lib/validations";
+
+async function getArtistForSession(session: { userId: string }) {
+	return db.query.artists.findFirst({ where: eq(artists.userId, session.userId) });
+}
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+	const session = await auth.getSession(request);
+	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+	const { id } = await params;
+	const artist = await getArtistForSession(session);
+	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+
+	const brief = await db.query.styleBriefs.findFirst({
+		where: and(eq(styleBriefs.id, id), eq(styleBriefs.artistId, artist.id)),
+		with: { song: true, generatedFrames: { orderBy: (t, { asc }) => [asc(t.sortOrder)] } },
+	});
+	if (!brief) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+	return NextResponse.json({ styleBrief: brief });
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+	const session = await auth.getSession(request);
+	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+	const { id } = await params;
+	const artist = await getArtistForSession(session);
+	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+
+	const body = await request.json();
+	const parsed = styleBriefSchema.partial().safeParse(body);
+	if (!parsed.success) return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+
+	const [updated] = await db
+		.update(styleBriefs)
+		.set({ ...parsed.data, updatedAt: new Date() })
+		.where(and(eq(styleBriefs.id, id), eq(styleBriefs.artistId, artist.id)))
+		.returning();
+
+	if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+	return NextResponse.json({ styleBrief: updated });
+}
+
+export async function DELETE(
+	request: NextRequest,
+	{ params }: { params: Promise<{ id: string }> },
+) {
+	const session = await auth.getSession(request);
+	if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+	const { id } = await params;
+	const artist = await getArtistForSession(session);
+	if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+
+	await db
+		.delete(styleBriefs)
+		.where(and(eq(styleBriefs.id, id), eq(styleBriefs.artistId, artist.id)));
+
+	return NextResponse.json({ success: true });
+}
