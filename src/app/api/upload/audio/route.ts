@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
@@ -14,31 +14,27 @@ const ALLOWED_TYPES = [
 	"audio/x-m4a",
 ];
 
-export async function POST(request: NextRequest) {
-	const { data: session } = await auth.getSession();
-	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-	if (!uploadRateLimiter.check(session.user.id).success) {
-		return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
-	}
-
-	const formData = await request.formData();
-	const file = formData.get("file") as File | null;
-
-	if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
-	if (!ALLOWED_TYPES.includes(file.type)) {
-		return NextResponse.json({ error: "File must be MP3, WAV, OGG, or AAC" }, { status: 400 });
-	}
-	if (file.size > MAX_SIZE_BYTES) {
-		return NextResponse.json({ error: "File must be under 50MB" }, { status: 400 });
-	}
+export async function POST(request: NextRequest): Promise<NextResponse> {
+	const body = (await request.json()) as HandleUploadBody;
 
 	try {
-		const filename = `aura/audio/${session.user.id}/${Date.now()}-${file.name}`;
-		const blob = await put(filename, file, { access: "public" });
-		return NextResponse.json({ url: blob.url });
+		const jsonResponse = await handleUpload({
+			body,
+			request,
+			onBeforeGenerateToken: async () => {
+				const { data: session } = await auth.getSession();
+				if (!session?.user?.id) throw new Error("Unauthorized");
+				if (!uploadRateLimiter.check(session.user.id).success) throw new Error("Rate limit exceeded");
+				return {
+					allowedContentTypes: ALLOWED_TYPES,
+					maximumSizeInBytes: MAX_SIZE_BYTES,
+					tokenPayload: session.user.id,
+				};
+			},
+			onUploadCompleted: async () => {},
+		});
+		return NextResponse.json(jsonResponse);
 	} catch (error) {
-		console.error("[upload/audio]", error);
-		return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+		return NextResponse.json({ error: (error as Error).message }, { status: 400 });
 	}
 }

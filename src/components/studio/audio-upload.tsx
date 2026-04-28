@@ -1,5 +1,6 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
 import { Loader2, Music, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -57,16 +58,12 @@ export function AudioUpload({
 			audio.onerror = () => resolve(0);
 		});
 
-		const form = new FormData();
-		form.append("file", file);
 		try {
-			const res = await fetch("/api/upload/audio", { method: "POST", body: form });
-			if (!res.ok) {
-				const err = await res.json();
-				throw new Error(err.error ?? "Upload failed");
-			}
-			const data = await res.json();
-			onUploaded({ url: data.url, durationMs });
+			const blob = await upload(`aura/audio/${Date.now()}-${file.name}`, file, {
+				access: "public",
+				handleUploadUrl: "/api/upload/audio",
+			});
+			onUploaded({ url: blob.url, durationMs });
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Upload failed");
 		} finally {
