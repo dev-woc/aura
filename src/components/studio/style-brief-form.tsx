@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArtStyleSelector } from "@/components/studio/art-style-selector";
+import { AudioUpload } from "@/components/studio/audio-upload";
 import { LayerWeightSliders } from "@/components/studio/layer-weight-sliders";
+import { MoodTagSelector } from "@/components/studio/mood-tag-selector";
 import { PalettePicker } from "@/components/studio/palette-picker";
 import { ReferenceImageUpload } from "@/components/studio/reference-image-upload";
 import { SpotifyTrackSearch } from "@/components/studio/spotify-track-search";
@@ -38,6 +40,19 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 
 	const [savedBriefId, setSavedBriefId] = useState<string | null>(initialBrief?.id ?? null);
 	const [analyzedSongId, setAnalyzedSongId] = useState<string | null>(initialBrief?.songId ?? null);
+
+	const [songSource, setSongSource] = useState<"spotify" | "upload">("spotify");
+	const [uploadedAudio, setUploadedAudio] = useState<{ url: string; durationMs: number } | null>(
+		null,
+	);
+	const [uploadTitle, setUploadTitle] = useState("");
+	const [uploadArtistName, setUploadArtistName] = useState("");
+	const [uploadLyrics, setUploadLyrics] = useState("");
+	const [uploadBpm, setUploadBpm] = useState(120);
+	const [moodTags, setMoodTags] = useState<{ genreTags: string[]; vibeTags: string[] }>({
+		genreTags: [],
+		vibeTags: [],
+	});
 
 	const [saveStatus, setSaveStatus] = useState<StepStatus>("idle");
 	const [analyzeStatus, setAnalyzeStatus] = useState<StepStatus>("idle");
@@ -75,27 +90,52 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 	};
 
 	const handleAnalyze = async () => {
-		if (!savedBriefId || !selectedTrack) return;
+		if (!savedBriefId) return;
 		setAnalyzeStatus("loading");
 		try {
-			const res = await fetch("/api/generate/analyze", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					spotifyTrackId: selectedTrack.id,
-					styleBriefId: savedBriefId,
-					trackTitle: selectedTrack.name,
-					artistName: selectedTrack.artistName,
-				}),
-			});
-
-			if (!res.ok) {
-				const err = await res.json();
-				throw new Error(err.error ?? "Analyze failed");
+			if (songSource === "upload") {
+				if (!uploadedAudio) throw new Error("No audio file uploaded");
+				const res = await fetch("/api/generate/analyze-upload", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						styleBriefId: savedBriefId,
+						audioFileUrl: uploadedAudio.url,
+						title: uploadTitle,
+						artistName: uploadArtistName,
+						durationMs: uploadedAudio.durationMs,
+						bpm: uploadBpm,
+						lyrics: uploadLyrics || undefined,
+						genreTags: moodTags.genreTags,
+						vibeTags: moodTags.vibeTags,
+					}),
+				});
+				if (!res.ok) {
+					const err = await res.json();
+					throw new Error(err.error ?? "Analyze failed");
+				}
+				const data = await res.json();
+				setAnalyzedSongId(data.song.id);
+			} else {
+				if (!selectedTrack) throw new Error("No track selected");
+				const res = await fetch("/api/generate/analyze", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						spotifyTrackId: selectedTrack.id,
+						styleBriefId: savedBriefId,
+						trackTitle: selectedTrack.name,
+						artistName: selectedTrack.artistName,
+					}),
+				});
+				if (!res.ok) {
+					const err = await res.json();
+					throw new Error(err.error ?? "Analyze failed");
+				}
+				const data = await res.json();
+				setAnalyzedSongId(data.song.id);
 			}
 
-			const data = await res.json();
-			setAnalyzedSongId(data.song.id);
 			setAnalyzeStatus("done");
 			toast.success("Song analyzed successfully!");
 		} catch (error) {
@@ -129,7 +169,14 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 		}
 	};
 
-	const canAnalyze = saveStatus === "done" && !!selectedTrack;
+	const canAnalyze =
+		saveStatus === "done" &&
+		(songSource === "spotify"
+			? !!selectedTrack
+			: !!uploadedAudio &&
+				!!uploadTitle.trim() &&
+				!!uploadArtistName.trim() &&
+				moodTags.genreTags.length > 0);
 	const canGenerate = analyzeStatus === "done";
 
 	return (
@@ -145,21 +192,70 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 			</div>
 
 			<div className="space-y-2">
-				<Label>Spotify Track</Label>
-				<SpotifyTrackSearch onSelect={setSelectedTrack} />
-				{selectedTrack && (
-					<div className="rounded-md border bg-muted/40 p-3 text-sm">
-						<span className="font-medium">{selectedTrack.name}</span>
-						<span className="text-muted-foreground"> — {selectedTrack.artistName}</span>
-					</div>
-				)}
-				{initialBrief?.song && !selectedTrack && (
-					<div className="rounded-md border bg-muted/40 p-3 text-sm">
-						<span className="font-medium">{initialBrief.song.title}</span>
-						<span className="text-muted-foreground"> — {initialBrief.song.artistName}</span>
-					</div>
-				)}
+				<Label>Music Source</Label>
+				<div className="flex w-fit rounded-md border">
+					{(["spotify", "upload"] as const).map((src) => (
+						<button
+							key={src}
+							type="button"
+							onClick={() => setSongSource(src)}
+							className={`px-4 py-1.5 text-sm capitalize transition-colors first:rounded-l-md last:rounded-r-md ${
+								songSource === src
+									? "bg-foreground text-background"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
+						>
+							{src === "spotify" ? "Spotify" : "Upload"}
+						</button>
+					))}
+				</div>
 			</div>
+
+			{songSource === "spotify" && (
+				<div className="space-y-2">
+					<Label>Spotify Track</Label>
+					<SpotifyTrackSearch onSelect={setSelectedTrack} />
+					{selectedTrack && (
+						<div className="rounded-md border bg-muted/40 p-3 text-sm">
+							<span className="font-medium">{selectedTrack.name}</span>
+							<span className="text-muted-foreground"> — {selectedTrack.artistName}</span>
+						</div>
+					)}
+					{initialBrief?.song && !selectedTrack && (
+						<div className="rounded-md border bg-muted/40 p-3 text-sm">
+							<span className="font-medium">{initialBrief.song.title}</span>
+							<span className="text-muted-foreground"> — {initialBrief.song.artistName}</span>
+						</div>
+					)}
+				</div>
+			)}
+
+			{songSource === "upload" && (
+				<div className="space-y-4">
+					<AudioUpload
+						uploaded={uploadedAudio}
+						onUploaded={setUploadedAudio}
+						onClear={() => setUploadedAudio(null)}
+						title={uploadTitle}
+						onTitleChange={setUploadTitle}
+						artistName={uploadArtistName}
+						onArtistNameChange={setUploadArtistName}
+						lyrics={uploadLyrics}
+						onLyricsChange={setUploadLyrics}
+						bpm={uploadBpm}
+						onBpmChange={setUploadBpm}
+					/>
+					<div className="space-y-2">
+						<Label>
+							Genre & Vibe{" "}
+							<span className="text-xs text-muted-foreground">
+								(used to infer mood for visuals)
+							</span>
+						</Label>
+						<MoodTagSelector value={moodTags} onChange={setMoodTags} />
+					</div>
+				</div>
+			)}
 
 			<div className="space-y-2">
 				<Label>Color Palette</Label>
@@ -204,7 +300,9 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 					className="flex-1"
 				>
 					{analyzeStatus === "loading"
-						? "Analyzing... (30-60s)"
+						? songSource === "upload" && !uploadLyrics
+							? "Transcribing + Analyzing... (60–90s)"
+							: "Analyzing... (30–60s)"
 						: analyzeStatus === "done"
 							? "Song Analyzed ✓"
 							: analyzeStatus === "error"

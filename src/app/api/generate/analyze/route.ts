@@ -8,8 +8,8 @@ import { artists, songs, styleBriefs } from "@/lib/db/schema";
 import { fetchLyrics } from "@/lib/genius";
 import { generateRateLimiter } from "@/lib/rate-limit";
 import { getAudioAnalysis, getAudioFeatures } from "@/lib/spotify";
-import type { BeatGrid } from "@/types";
 import { generateAnalyzeSchema } from "@/lib/validations";
+import type { BeatGrid } from "@/types";
 
 export async function POST(request: NextRequest) {
 	const { data: session } = await auth.getSession();

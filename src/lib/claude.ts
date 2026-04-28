@@ -107,3 +107,35 @@ Return ONLY valid JSON:
 	const text = response.content[0].type === "text" ? response.content[0].text : "";
 	return JSON.parse(text) as MoodProfile;
 }
+
+export async function analyzeMoodFromTags(params: {
+	genreTags: string[];
+	vibeTags: string[];
+	lyricsSentimentHint: string;
+}): Promise<MoodProfile> {
+	const response = await client.messages.create({
+		model: MODEL,
+		max_tokens: 512,
+		messages: [
+			{
+				role: "user",
+				content: `Given these music characteristics, return a JSON mood profile.
+Genre: ${params.genreTags.join(", ")}
+Vibe: ${params.vibeTags.join(", ")}
+Lyric themes: ${params.lyricsSentimentHint}
+
+Return ONLY valid JSON:
+{
+  "valence": <0.0-1.0 estimated>,
+  "energy": <0.0-1.0 estimated>,
+  "quadrant": "<high|low>-valence-<high|low>-energy",
+  "tone": "one of: triumphant, melancholic, anxious, euphoric, aggressive, peaceful, nostalgic, playful",
+  "paletteHint": "one of: warm-saturated, warm-muted, cool-saturated, cool-muted, high-contrast, monochromatic",
+  "textureChar": "one of: sharp, soft, fluid, fractured"
+}`,
+			},
+		],
+	});
+	const text = response.content[0].type === "text" ? response.content[0].text : "";
+	return JSON.parse(text) as MoodProfile;
+}

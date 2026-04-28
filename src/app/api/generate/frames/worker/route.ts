@@ -60,10 +60,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		await db
-			.update(styleBriefs)
-			.set({ status: "ready" })
-			.where(eq(styleBriefs.id, brief.id));
+		await db.update(styleBriefs).set({ status: "ready" }).where(eq(styleBriefs.id, brief.id));
 		await db
 			.update(generationJobs)
 			.set({ status: "done", completedAt: new Date() })

@@ -1,9 +1,14 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
-import { generatedFrames, styleBriefs } from "@/lib/db/schema";
+import { briefLikes, generatedFrames, styleBriefs } from "@/lib/db/schema";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ briefId: string }> }) {
+export async function GET(
+	_request: NextRequest,
+	{ params }: { params: Promise<{ briefId: string }> },
+) {
 	const { briefId } = await params;
 
 	const brief = await db.query.styleBriefs.findFirst({
@@ -18,5 +23,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ briefId
 		orderBy: (f, { asc }) => [asc(f.sortOrder)],
 	});
 
-	return NextResponse.json({ brief, frames });
+	const { data: session } = await auth.getSession();
+	const liked = session?.user?.id
+		? !!(await db.query.briefLikes.findFirst({
+				where: and(eq(briefLikes.userId, session.user.id), eq(briefLikes.styleBriefId, briefId)),
+			}))
+		: false;
+
+	return NextResponse.json({ brief, frames, liked });
 }

@@ -34,3 +34,4 @@ export function createRateLimiter(maxRequests: number, windowMs: number) {
 export const apiRateLimiter = createRateLimiter(30, 60_000); // 30 req/min
 export const generateRateLimiter = createRateLimiter(5, 60_000); // 5 generations/min per user
 export const uploadRateLimiter = createRateLimiter(20, 60_000); // 20 uploads/min per user
+export const viewRateLimiter = createRateLimiter(10, 60_000); // 10 view pings/min per IP

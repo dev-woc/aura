@@ -18,7 +18,13 @@ export async function GET(request: NextRequest) {
 
 	const briefs = await db.query.styleBriefs.findMany({
 		where: eq(styleBriefs.artistId, artist.id),
-		with: { song: true },
+		with: {
+			song: true,
+			generatedFrames: {
+				limit: 1,
+				orderBy: (t, { asc }) => [asc(t.sortOrder)],
+			},
+		},
 		orderBy: (t, { desc }) => [desc(t.createdAt)],
 	});
 

@@ -40,6 +40,18 @@ export const generateAnalyzeSchema = z.object({
 	styleBriefId: z.string().uuid(),
 });
 
+export const generateAnalyzeUploadSchema = z.object({
+	styleBriefId: z.string().uuid(),
+	audioFileUrl: z.string().url(),
+	title: z.string().min(1).max(200),
+	artistName: z.string().min(1).max(200),
+	durationMs: z.number().int().min(1000),
+	bpm: z.number().min(40).max(300).default(120),
+	lyrics: z.string().optional(),
+	genreTags: z.array(z.string().min(1)).min(1).max(5),
+	vibeTags: z.array(z.string().min(1)).min(1).max(5),
+});
+
 export const generateFramesSchema = z.object({
 	songId: z.string().uuid(),
 	styleBriefId: z.string().uuid(),

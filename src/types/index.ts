@@ -1,6 +1,8 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type {
+	artistFollows,
 	artists,
+	briefLikes,
 	generatedFrames,
 	generationJobs,
 	songs,
@@ -14,6 +16,8 @@ export type Song = InferSelectModel<typeof songs>;
 export type StyleBrief = InferSelectModel<typeof styleBriefs>;
 export type GeneratedFrame = InferSelectModel<typeof generatedFrames>;
 export type GenerationJob = InferSelectModel<typeof generationJobs>;
+export type BriefLike = InferSelectModel<typeof briefLikes>;
+export type ArtistFollow = InferSelectModel<typeof artistFollows>;
 
 export type UserRole = "artist" | "listener";
 

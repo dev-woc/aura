@@ -40,18 +40,19 @@ export function SignupForm() {
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
-			<div className="space-y-2">
-				<Label htmlFor="name">Name</Label>
+			<div className="space-y-1.5">
+				<Label htmlFor="name" className="text-white/60 text-xs uppercase tracking-wide">Name</Label>
 				<Input
 					id="name"
 					placeholder="Your name"
 					value={name}
 					onChange={(e) => setName(e.target.value)}
 					aria-label="Name"
+					className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-white/20"
 				/>
 			</div>
-			<div className="space-y-2">
-				<Label htmlFor="email">Email</Label>
+			<div className="space-y-1.5">
+				<Label htmlFor="email" className="text-white/60 text-xs uppercase tracking-wide">Email</Label>
 				<Input
 					id="email"
 					type="email"
@@ -59,10 +60,11 @@ export function SignupForm() {
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
 					aria-label="Email"
+					className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-white/20"
 				/>
 			</div>
-			<div className="space-y-2">
-				<Label htmlFor="password">Password</Label>
+			<div className="space-y-1.5">
+				<Label htmlFor="password" className="text-white/60 text-xs uppercase tracking-wide">Password</Label>
 				<Input
 					id="password"
 					type="password"
@@ -70,10 +72,11 @@ export function SignupForm() {
 					value={password}
 					onChange={(e) => setPassword(e.target.value)}
 					aria-label="Password"
+					className="border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-white/20"
 				/>
 			</div>
-			{error && <p className="text-sm text-destructive text-center">{error}</p>}
-			<Button type="submit" className="w-full" disabled={loading}>
+			{error && <p className="text-sm text-red-400 text-center">{error}</p>}
+			<Button type="submit" className="w-full bg-white text-black hover:bg-white/90" disabled={loading}>
 				{loading ? "Creating Account..." : "Create Account"}
 			</Button>
 		</form>

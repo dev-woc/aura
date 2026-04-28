@@ -37,6 +37,7 @@ export const artists = pgTable(
 		bio: text("bio"),
 		avatarUrl: text("avatar_url"),
 		verified: boolean("verified").notNull().default(false),
+		followCount: integer("follow_count").notNull().default(0),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -54,7 +55,8 @@ export const songs = pgTable(
 	"songs",
 	{
 		id: uuid("id").defaultRandom().primaryKey(),
-		spotifyTrackId: text("spotify_track_id").notNull().unique(),
+		spotifyTrackId: text("spotify_track_id").unique(),
+		audioFileUrl: text("audio_file_url"),
 		geniusId: text("genius_id"),
 		title: text("title").notNull(),
 		artistName: text("artist_name").notNull(),
@@ -92,6 +94,8 @@ export const styleBriefs = pgTable(
 		status: text("status").notNull().default("draft"), // 'draft' | 'generating' | 'ready'
 		published: boolean("published").notNull().default(false),
 		publishedAt: timestamp("published_at", { withTimezone: true }),
+		likeCount: integer("like_count").notNull().default(0),
+		playCount: integer("play_count").notNull().default(0),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 	},
@@ -142,6 +146,40 @@ export const generationJobs = pgTable(
 	(table) => [index("idx_generation_jobs_brief_id").on(table.styleBriefId)],
 );
 
+// Brief likes (listeners liking published experiences)
+export const briefLikes = pgTable(
+	"brief_likes",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		userId: text("user_id").notNull(),
+		styleBriefId: uuid("style_brief_id")
+			.notNull()
+			.references(() => styleBriefs.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("idx_brief_likes_user_brief").on(table.userId, table.styleBriefId),
+		index("idx_brief_likes_brief_id").on(table.styleBriefId),
+	],
+);
+
+// Artist follows (listeners following artists)
+export const artistFollows = pgTable(
+	"artist_follows",
+	{
+		id: uuid("id").defaultRandom().primaryKey(),
+		followerId: text("follower_id").notNull(),
+		artistId: uuid("artist_id")
+			.notNull()
+			.references(() => artists.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("idx_artist_follows_follower_artist").on(table.followerId, table.artistId),
+		index("idx_artist_follows_artist_id").on(table.artistId),
+	],
+);
+
 // Relations
 export const usersMetaRelations = relations(usersMeta, ({ one }) => ({
 	artist: one(artists, { fields: [usersMeta.userId], references: [artists.userId] }),
@@ -149,6 +187,7 @@ export const usersMetaRelations = relations(usersMeta, ({ one }) => ({
 
 export const artistsRelations = relations(artists, ({ many }) => ({
 	styleBriefs: many(styleBriefs),
+	artistFollows: many(artistFollows),
 }));
 
 export const songsRelations = relations(songs, ({ many }) => ({
@@ -161,10 +200,14 @@ export const styleBriefsRelations = relations(styleBriefs, ({ one, many }) => ({
 	song: one(songs, { fields: [styleBriefs.songId], references: [songs.id] }),
 	generatedFrames: many(generatedFrames),
 	generationJobs: many(generationJobs),
+	briefLikes: many(briefLikes),
 }));
 
 export const generationJobsRelations = relations(generationJobs, ({ one }) => ({
-	styleBrief: one(styleBriefs, { fields: [generationJobs.styleBriefId], references: [styleBriefs.id] }),
+	styleBrief: one(styleBriefs, {
+		fields: [generationJobs.styleBriefId],
+		references: [styleBriefs.id],
+	}),
 }));
 
 export const generatedFramesRelations = relations(generatedFrames, ({ one }) => ({
@@ -173,4 +216,18 @@ export const generatedFramesRelations = relations(generatedFrames, ({ one }) => 
 		references: [styleBriefs.id],
 	}),
 	song: one(songs, { fields: [generatedFrames.songId], references: [songs.id] }),
+}));
+
+export const briefLikesRelations = relations(briefLikes, ({ one }) => ({
+	styleBrief: one(styleBriefs, {
+		fields: [briefLikes.styleBriefId],
+		references: [styleBriefs.id],
+	}),
+}));
+
+export const artistFollowsRelations = relations(artistFollows, ({ one }) => ({
+	artist: one(artists, {
+		fields: [artistFollows.artistId],
+		references: [artists.id],
+	}),
 }));

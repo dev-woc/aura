@@ -1,10 +1,12 @@
 import { and, desc, eq } from "drizzle-orm";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
-import { artists, styleBriefs } from "@/lib/db/schema";
+import { artistFollows, artists, styleBriefs } from "@/lib/db/schema";
 
 export async function GET(
-	_request: Request,
+	_request: NextRequest,
 	{ params }: { params: Promise<{ artistId: string }> },
 ) {
 	const { artistId } = await params;
@@ -22,5 +24,15 @@ export async function GET(
 		orderBy: [desc(styleBriefs.publishedAt)],
 	});
 
-	return NextResponse.json({ artist, briefs });
+	const { data: session } = await auth.getSession();
+	const following = session?.user?.id
+		? !!(await db.query.artistFollows.findFirst({
+				where: and(
+					eq(artistFollows.followerId, session.user.id),
+					eq(artistFollows.artistId, artistId),
+				),
+			}))
+		: false;
+
+	return NextResponse.json({ artist, briefs, following });
 }
