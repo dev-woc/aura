@@ -83,9 +83,56 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 			setSaveStatus("done");
 			toast.success("Style brief saved!");
 			onSave?.(brief);
+
+			// Auto-analyze immediately after save if upload source is ready
+			if (
+				songSource === "upload" &&
+				uploadedAudio &&
+				uploadTitle.trim() &&
+				uploadArtistName.trim() &&
+				moodTags.genreTags.length > 0 &&
+				analyzeStatus === "idle"
+			) {
+				await runAnalyzeUpload(brief.id, uploadedAudio);
+			}
 		} catch (error) {
 			setSaveStatus("error");
 			toast.error(error instanceof Error ? error.message : "Failed to save style brief");
+		}
+	};
+
+	const runAnalyzeUpload = async (
+		briefId: string,
+		audio: { url: string; durationMs: number },
+	) => {
+		setAnalyzeStatus("loading");
+		try {
+			const res = await fetch("/api/generate/analyze-upload", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					styleBriefId: briefId,
+					audioFileUrl: audio.url,
+					title: uploadTitle,
+					artistName: uploadArtistName,
+					durationMs: audio.durationMs,
+					bpm: uploadBpm,
+					lyrics: uploadLyrics || undefined,
+					genreTags: moodTags.genreTags,
+					vibeTags: moodTags.vibeTags,
+				}),
+			});
+			if (!res.ok) {
+				const err = await res.json();
+				throw new Error(err.error ?? "Analyze failed");
+			}
+			const data = await res.json();
+			setAnalyzedSongId(data.song.id);
+			setAnalyzeStatus("done");
+			toast.success("Song analyzed successfully!");
+		} catch (error) {
+			setAnalyzeStatus("error");
+			toast.error(error instanceof Error ? error.message : "Failed to analyze song");
 		}
 	};
 
@@ -95,27 +142,8 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 		try {
 			if (songSource === "upload") {
 				if (!uploadedAudio) throw new Error("No audio file uploaded");
-				const res = await fetch("/api/generate/analyze-upload", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						styleBriefId: savedBriefId,
-						audioFileUrl: uploadedAudio.url,
-						title: uploadTitle,
-						artistName: uploadArtistName,
-						durationMs: uploadedAudio.durationMs,
-						bpm: uploadBpm,
-						lyrics: uploadLyrics || undefined,
-						genreTags: moodTags.genreTags,
-						vibeTags: moodTags.vibeTags,
-					}),
-				});
-				if (!res.ok) {
-					const err = await res.json();
-					throw new Error(err.error ?? "Analyze failed");
-				}
-				const data = await res.json();
-				setAnalyzedSongId(data.song.id);
+				await runAnalyzeUpload(savedBriefId, uploadedAudio);
+				return;
 			} else {
 				if (!selectedTrack) throw new Error("No track selected");
 				const res = await fetch("/api/generate/analyze", {
