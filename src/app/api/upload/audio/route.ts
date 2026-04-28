@@ -15,26 +15,31 @@ const ALLOWED_TYPES = [
 ];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+	const { data: session } = await auth.getSession();
+	if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+	if (!uploadRateLimiter.check(session.user.id).success) {
+		return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+	}
+
+	const userId = session.user.id;
 	const body = (await request.json()) as HandleUploadBody;
 
 	try {
 		const jsonResponse = await handleUpload({
 			body,
 			request,
-			onBeforeGenerateToken: async () => {
-				const { data: session } = await auth.getSession();
-				if (!session?.user?.id) throw new Error("Unauthorized");
-				if (!uploadRateLimiter.check(session.user.id).success) throw new Error("Rate limit exceeded");
-				return {
-					allowedContentTypes: ALLOWED_TYPES,
-					maximumSizeInBytes: MAX_SIZE_BYTES,
-					tokenPayload: session.user.id,
-				};
-			},
+			onBeforeGenerateToken: async () => ({
+				allowedContentTypes: ALLOWED_TYPES,
+				maximumSizeInBytes: MAX_SIZE_BYTES,
+				tokenPayload: userId,
+			}),
 			onUploadCompleted: async () => {},
 		});
 		return NextResponse.json(jsonResponse);
 	} catch (error) {
-		return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+		const message = (error as Error).message;
+		console.error("[upload/audio]", message);
+		return NextResponse.json({ error: message }, { status: 400 });
 	}
 }
