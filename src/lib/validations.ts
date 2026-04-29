@@ -49,7 +49,7 @@ export const generateAnalyzeUploadSchema = z.object({
 	bpm: z.number().min(40).max(300).default(120),
 	lyrics: z.string().optional(),
 	genreTags: z.array(z.string().min(1)).min(1).max(5),
-	vibeTags: z.array(z.string().min(1)).min(1).max(5),
+	vibeTags: z.array(z.string().min(1)).max(5).default([]),
 });
 
 export const generateFramesSchema = z.object({
