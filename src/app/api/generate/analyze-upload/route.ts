@@ -58,37 +58,60 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "Style brief not found" }, { status: 404 });
 	}
 
-	try {
-		if (!lyrics) {
+	// Step 1: Transcribe if no lyrics provided
+	if (!lyrics) {
+		try {
 			const result = (await replicate.run("openai/whisper", {
 				input: { audio: audioFileUrl, model: "small" },
 			})) as { text: string };
 			lyrics = result.text;
-		}
-
-		if (!lyrics?.trim()) {
+		} catch (error) {
+			console.error("[analyze-upload] whisper failed:", error);
 			return NextResponse.json(
-				{ error: "Could not transcribe audio — please provide lyrics manually" },
-				{ status: 422 },
+				{ error: "Transcription failed — please paste lyrics manually and retry" },
+				{ status: 500 },
 			);
 		}
+	}
 
-		const beatGrid = generateSyntheticBeatGrid(bpm ?? 120, durationMs);
+	if (!lyrics?.trim()) {
+		return NextResponse.json(
+			{ error: "Could not transcribe audio — please provide lyrics manually" },
+			{ status: 422 },
+		);
+	}
 
-		const narrativeMap = await analyzeLyrics({
+	// Step 2: Analyze lyrics with Claude
+	const beatGrid = generateSyntheticBeatGrid(bpm ?? 120, durationMs);
+	let narrativeMap: Awaited<ReturnType<typeof analyzeLyrics>>;
+	try {
+		narrativeMap = await analyzeLyrics({
 			lyrics,
 			trackTitle: title,
 			artistName,
 			artStyle: brief.artStyle as { descriptors: string[]; freeText: string },
 			palette: brief.palette as Array<{ hex: string; label: string }>,
 		});
+	} catch (error) {
+		console.error("[analyze-upload] analyzeLyrics failed:", error);
+		return NextResponse.json({ error: "Lyric analysis failed — check ANTHROPIC_API_KEY" }, { status: 500 });
+	}
 
-		const moodProfile = await analyzeMoodFromTags({
+	// Step 3: Analyze mood with Claude
+	let moodProfile: Awaited<ReturnType<typeof analyzeMoodFromTags>>;
+	try {
+		moodProfile = await analyzeMoodFromTags({
 			genreTags,
 			vibeTags,
 			lyricsSentimentHint: narrativeMap.dominantThemes.join(", "),
 		});
+	} catch (error) {
+		console.error("[analyze-upload] analyzeMoodFromTags failed:", error);
+		return NextResponse.json({ error: "Mood analysis failed — check ANTHROPIC_API_KEY" }, { status: 500 });
+	}
 
+	// Step 4: Save to database
+	try {
 		const existingSong = brief.songId
 			? await db.query.songs.findFirst({ where: eq(songs.id, brief.songId) })
 			: null;
@@ -134,7 +157,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json({ song, narrativeMap, moodProfile });
 	} catch (error) {
-		console.error("[generate/analyze-upload]", error);
-		return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
+		console.error("[analyze-upload] db failed:", error);
+		return NextResponse.json({ error: "Failed to save song to database" }, { status: 500 });
 	}
 }
