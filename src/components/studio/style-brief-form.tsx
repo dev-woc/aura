@@ -82,9 +82,9 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 			setSavedBriefId(brief.id);
 			setSaveStatus("done");
 			toast.success("Style brief saved!");
-			onSave?.(brief);
 
-			// Auto-analyze immediately after save if upload source is ready
+			// Auto-analyze immediately after save if upload source is ready.
+			// Do this before calling onSave so navigation (if any) happens after analysis.
 			if (
 				songSource === "upload" &&
 				uploadedAudio &&
@@ -95,6 +95,8 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 			) {
 				await runAnalyzeUpload(brief.id, uploadedAudio);
 			}
+
+			onSave?.(brief);
 		} catch (error) {
 			setSaveStatus("error");
 			toast.error(error instanceof Error ? error.message : "Failed to save style brief");
@@ -198,14 +200,15 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 	};
 
 	const canAnalyze =
-		saveStatus === "done" &&
+		!!savedBriefId &&
+		analyzeStatus !== "loading" &&
 		(songSource === "spotify"
 			? !!selectedTrack
 			: !!uploadedAudio &&
 				!!uploadTitle.trim() &&
 				!!uploadArtistName.trim() &&
 				moodTags.genreTags.length > 0);
-	const canGenerate = analyzeStatus === "done";
+	const canGenerate = !!analyzedSongId && analyzeStatus !== "loading";
 
 	return (
 		<div className="space-y-6">
@@ -323,7 +326,7 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 
 				<Button
 					onClick={handleAnalyze}
-					disabled={!canAnalyze || analyzeStatus === "loading"}
+					disabled={!canAnalyze}
 					variant={analyzeStatus === "done" ? "outline" : "default"}
 					className="flex-1"
 				>

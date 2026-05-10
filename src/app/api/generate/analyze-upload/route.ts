@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { auth } from "@/lib/auth/server";
 import { analyzeLyrics, analyzeMoodFromTags } from "@/lib/claude";
+import { analyzeLyricsOllama, analyzeMoodFromTagsOllama } from "@/lib/ollama";
+
+const useOllama = process.env.LLM_PROVIDER === "ollama";
+const doAnalyzeLyrics: typeof analyzeLyrics = useOllama ? analyzeLyricsOllama : analyzeLyrics;
+const doAnalyzeMood: typeof analyzeMoodFromTags = useOllama ? analyzeMoodFromTagsOllama : analyzeMoodFromTags;
 import { db } from "@/lib/db";
 import { artists, songs, styleBriefs } from "@/lib/db/schema";
 import { generateRateLimiter } from "@/lib/rate-limit";
@@ -85,7 +90,7 @@ export async function POST(request: NextRequest) {
 	const beatGrid = generateSyntheticBeatGrid(bpm ?? 120, durationMs);
 	let narrativeMap: Awaited<ReturnType<typeof analyzeLyrics>>;
 	try {
-		narrativeMap = await analyzeLyrics({
+		narrativeMap = await doAnalyzeLyrics({
 			lyrics,
 			trackTitle: title,
 			artistName,
@@ -100,7 +105,7 @@ export async function POST(request: NextRequest) {
 	// Step 3: Analyze mood with Claude
 	let moodProfile: Awaited<ReturnType<typeof analyzeMoodFromTags>>;
 	try {
-		moodProfile = await analyzeMoodFromTags({
+		moodProfile = await doAnalyzeMood({
 			genreTags,
 			vibeTags,
 			lyricsSentimentHint: narrativeMap.dominantThemes.join(", "),
