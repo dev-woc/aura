@@ -41,13 +41,23 @@ export function StyleBriefForm({ initialBrief, onSave, onFramesGenerated }: Styl
 	const [savedBriefId, setSavedBriefId] = useState<string | null>(initialBrief?.id ?? null);
 	const [analyzedSongId, setAnalyzedSongId] = useState<string | null>(initialBrief?.songId ?? null);
 
-	const [songSource, setSongSource] = useState<"spotify" | "upload">("spotify");
-	const [uploadedAudio, setUploadedAudio] = useState<{ url: string; durationMs: number } | null>(
-		null,
+	// Restore upload source if the linked song was an upload (not Spotify)
+	const existingUploadSong =
+		initialBrief?.song?.audioFileUrl && !initialBrief.song.spotifyTrackId
+			? initialBrief.song
+			: null;
+
+	const [songSource, setSongSource] = useState<"spotify" | "upload">(
+		existingUploadSong ? "upload" : "spotify",
 	);
-	const [uploadTitle, setUploadTitle] = useState("");
-	const [uploadArtistName, setUploadArtistName] = useState("");
-	const [uploadLyrics, setUploadLyrics] = useState("");
+	const [uploadedAudio, setUploadedAudio] = useState<{ url: string; durationMs: number } | null>(
+		existingUploadSong
+			? { url: existingUploadSong.audioFileUrl!, durationMs: existingUploadSong.durationMs ?? 0 }
+			: null,
+	);
+	const [uploadTitle, setUploadTitle] = useState(existingUploadSong?.title ?? "");
+	const [uploadArtistName, setUploadArtistName] = useState(existingUploadSong?.artistName ?? "");
+	const [uploadLyrics, setUploadLyrics] = useState(existingUploadSong?.lyricsCache ?? "");
 	const [uploadBpm, setUploadBpm] = useState(120);
 	const [moodTags, setMoodTags] = useState<{ genreTags: string[]; vibeTags: string[] }>({
 		genreTags: [],
